@@ -10,9 +10,9 @@ This Node.js application sends notifications to a Telegram group using a Telegra
 ## Installation
 
 ```
-git clone https://github.com/yourusername/telegram-notification-bot.git
-cd telegram-notification-bot
-npm install
+git clone https://github.com/Joyboy04/api-bot-telegram.git
+cd api-bot-telegram/src
+npm init
 ```
 Create a .env file in the project root:
 ```
@@ -22,12 +22,12 @@ TELEGRAM_GROUP_CHAT_ID=@your_group_chat
 # Usage
 For the start the bot you can just run it in the Terminal
 ```
-node bot.js
+node app.js
 ```
 Bot will run on http://localhost:3000.
 
 # API Endpoint
-Endpoint: POST /sendnotif
+Endpoint: POST 
 Request Body: JSON object with an optional message property.
 Example using cURL:
 
@@ -36,6 +36,6 @@ curl -X POST -H "Content-Type: application/json" -d '{"message": "Custom notific
 ```
 Or you can just run it on postman
 ```
-http://localhost:3000/sendnotif
+http://localhost:3000/
 ```
 
