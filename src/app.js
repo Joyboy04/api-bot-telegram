@@ -1,8 +1,3 @@
-import { config } from 'dotenv';
-import { resolve } from 'path';
-
-config({ path: resolve('./.env') });
-
 import express from 'express';
 import { sendBannedNotification, sendExpiredNotification } from './routes/routesNotifcation.js';
 
