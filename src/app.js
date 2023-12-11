@@ -6,6 +6,9 @@ const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
+app.get('/', async(req, res) => {
+  res.send("Express on Vercel");
+});
 
 app.post('/notificationTele', async (req, res) => {
   const { number, message } = req.body;
@@ -21,3 +24,6 @@ app.post('/notificationTele', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
 });
+
+// Export the Express API
+module.exports = app;
