@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { sendBannedNotification } from './routes/routesNotifcation.js';
 
 const app = express();
@@ -6,9 +7,14 @@ const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
-app.get('/', async(req, res) => {
-  res.send("Express on Vercel");
+// Apply rate limiting middleware
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute window
+  max: 20, // limit each IP to 20 requests per windowMs
+  message: { success: false, message: 'Rate limit exceeded. Please wait and try again later.' },
 });
+app.use('/notificationTele', apiLimiter);
+
 
 app.post('/notificationTele', async (req, res) => {
   const { number, message } = req.body;
@@ -24,4 +30,3 @@ app.post('/notificationTele', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
 });
-
