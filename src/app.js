@@ -1,5 +1,5 @@
 import express from 'express';
-import rateLimit from 'express-rate-limit';
+import mysql from 'mysql';
 import { sendBannedNotification } from './routes/routesNotifcation.js';
 
 const app = express();
@@ -7,35 +7,92 @@ const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// Apply rate limiting middleware
-const apiLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute window
-  max: 20, // limit each IP to 20 requests per windowMs
-  message: { success: false, message: 'Rate limit exceeded. Please wait and try again later.' },
-  skipFailedRequests: true, // Skip counting failed requests towards the limit
-});
-app.use('/notificationTele', apiLimiter);
+// Function to create a new MySQL connection
+function createConnection() {
+  return mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: '',
+    database: 'dbnumber',
+    connectTimeout: 0,
+    acquireTimeout: 0,
+  });
+}
 
-app.post('/notificationTele', async (req, res) => {
-  const { number, message } = req.body;
+// Function to execute a MySQL query with promises
+function executeQuery(query, connection) {
+  return new Promise((resolve, reject) => {
+    connection.query(query, (error, results) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(results);
+      }
+    });
+  });
+}
+
+// ...
+
+app.post('/notifycheckDate', async (req, res) => {
   try {
-    await sendBannedNotification(number, message);
-    res.status(200).json({ success: true, message: 'Notification sent successfully.' });
-  } catch (error) {
-    console.error('Error sending expired notification:', error.message);
-    
-    // Check if the Retry-After header is present
-    const retryAfter = parseInt(res.get('Retry-After'), 10);
-    if (!isNaN(retryAfter) && retryAfter > 0) {
-      // Wait for the specified time before responding with the error
-      setTimeout(() => {
-        res.status(500).json({ success: false, message: 'Failed to send notification.' });
-      }, retryAfter * 1000); // Convert seconds to milliseconds
+    const connection = createConnection();
+
+    connection.connect((err) => {
+      if (err) {
+        console.error('Error connecting to MySQL:', err.message);
+        throw err;
+      }
+
+      console.log('Connected to MySQL');
+    });
+
+    // Simulate a database query (replace this with your actual query)
+    const results = await executeQuery('SELECT * FROM tnumber ORDER BY id ASC', connection);
+    // console.log('Rows from the database:', results); // Log the rows to the console
+
+    // Use the 'Asia/Jakarta' time zone
+    const currentDate = new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' });
+
+    if (Array.isArray(results) && results.length > 0) {
+      const notifications = [];
+
+      for (const row of results) {
+        // console.log('Row:', row);
+
+        const expiredDate = new Date(row.tanggal_expired).toLocaleString('en-US', { timeZone: 'Asia/Jakarta' });
+        const aktifDate = new Date(row.tanggal_aktif).toLocaleString('en-US', { timeZone: 'Asia/Jakarta' });
+
+        // console.log('Expired Date:', expiredDate);
+        // console.log('Aktif Date:', aktifDate);
+
+        if (new Date(expiredDate) < new Date(currentDate)) {
+          console.log('Sending expiration notification for:', row.nomor_telp);
+          notifications.push(sendBannedNotification(row.nomor_telp, 'Phone number has expired!', req, res));
+        }
+
+        if (new Date(aktifDate) < new Date(currentDate)) {
+          console.log('Sending grace period notification for:', row.nomor_telp);
+          notifications.push(sendBannedNotification(row.nomor_telp, 'Phone number has entered the grace period!', req, res));
+        } 
+      }
+
+      await Promise.all(notifications);
+      // console.log('Notifications:', notifications);
     } else {
-      res.status(500).json({ success: false, message: 'Failed to send notification.' });
+      console.error('Error processing notifications: Rows are not an array or are empty.');
     }
+
+    connection.end();
+
+    res.status(200).json({ success: true, message: 'Notifications processed successfully.' });
+  } catch (error) {
+    console.error('Error processing notifications:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to process notifications.' });
   }
 });
+
+// ...
 
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
