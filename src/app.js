@@ -1,5 +1,6 @@
 import express from 'express';
 import mysql from 'mysql';
+import cron from 'node-cron';
 import { sendBannedNotification } from './routes/routesNotifcation.js';
 
 const app = express();
@@ -32,9 +33,8 @@ function executeQuery(query, connection) {
   });
 }
 
-// ...
-
-app.post('/notifycheckDate', async (req, res) => {
+// Function to check dates and send notifications
+async function checkDatesAndSendNotifications() {
   try {
     const connection = createConnection();
 
@@ -49,7 +49,6 @@ app.post('/notifycheckDate', async (req, res) => {
 
     // Simulate a database query (replace this with your actual query)
     const results = await executeQuery('SELECT * FROM tnumber ORDER BY id ASC', connection);
-    // console.log('Rows from the database:', results); // Log the rows to the console
 
     // Use the 'Asia/Jakarta' time zone
     const currentDate = new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' });
@@ -58,41 +57,51 @@ app.post('/notifycheckDate', async (req, res) => {
       const notifications = [];
 
       for (const row of results) {
-        // console.log('Row:', row);
-
         const expiredDate = new Date(row.tanggal_expired).toLocaleString('en-US', { timeZone: 'Asia/Jakarta' });
         const aktifDate = new Date(row.tanggal_aktif).toLocaleString('en-US', { timeZone: 'Asia/Jakarta' });
 
-        // console.log('Expired Date:', expiredDate);
-        // console.log('Aktif Date:', aktifDate);
-
         if (new Date(expiredDate) < new Date(currentDate)) {
           console.log('Sending expiration notification for:', row.nomor_telp);
-          notifications.push(sendBannedNotification(row.nomor_telp, 'Phone number has expired!', req, res));
+          notifications.push(sendBannedNotification(row.nomor_telp, 'Phone number has expired!'));
         }
 
         if (new Date(aktifDate) < new Date(currentDate)) {
           console.log('Sending grace period notification for:', row.nomor_telp);
-          notifications.push(sendBannedNotification(row.nomor_telp, 'Phone number has entered the grace period!', req, res));
-        } 
+          notifications.push(sendBannedNotification(row.nomor_telp, 'Phone number has entered the grace period!'));
+        }
       }
 
       await Promise.all(notifications);
-      // console.log('Notifications:', notifications);
+      
     } else {
       console.error('Error processing notifications: Rows are not an array or are empty.');
     }
 
     connection.end();
 
-    res.status(200).json({ success: true, message: 'Notifications processed successfully.' });
+    console.log('Notifications processed successfully.');
   } catch (error) {
     console.error('Error processing notifications:', error.message);
-    res.status(500).json({ success: false, message: 'Failed to process notifications.' });
+  }
+}
+
+// Schedule the cron job to run every day at 10:00 AM
+cron.schedule('0 10 * * *', async () => {
+  try {
+    console.log('Running the cron job at 10:00 AM every day...');
+    const fakeReq = {}; // Create a fake request object for testing
+    const fakeRes = {}; // Create a fake response object for testing
+    await checkDatesAndSendNotifications(fakeReq, fakeRes);
+  } catch (error) {
+    console.error('Error running the cron job:', error.message);
   }
 });
 
-// ...
+// // Schedule the task to run every day at 10 AM
+// cron.schedule('0 10 * * *', () => {
+//   console.log('Running daily check at 10 AM');
+//   checkDatesAndSendNotifications();
+// });
 
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
