@@ -79,6 +79,24 @@ async function checkDatesAndSendNotifications(configurations) {
   }
 }
 
+async function fetchConfigurationsFromDatabase() {
+  const connection = createConnection();
+
+  try {
+    connection.connect();
+
+    const results = await executeQuery('SELECT * FROM bot_token', connection);
+
+    return results.map((row) => ({
+      telegramBotToken: row.telegram_bot_token,
+      groupChatId: row.group_chat_id,
+      message: row.message,
+    }));
+  } finally {
+    connection.end();
+  }
+}
+
 // Schedule the cron job to run every minute for testing purposes
 cron.schedule('* * * * *', async () => {
   try {
@@ -97,24 +115,6 @@ cron.schedule('* * * * *', async () => {
     console.error('Error running the cron job:', error.message);
   }
 });
-
-async function fetchConfigurationsFromDatabase() {
-  const connection = createConnection();
-
-  try {
-    connection.connect();
-
-    const results = await executeQuery('SELECT * FROM bot_token', connection);
-
-    return results.map((row) => ({
-      telegramBotToken: row.telegram_bot_token,
-      groupChatId: row.group_chat_id,
-      message: row.message,
-    }));
-  } finally {
-    connection.end();
-  }
-}
 
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
