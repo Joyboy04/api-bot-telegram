@@ -1,7 +1,9 @@
 // connection.js
 import mysql from 'mysql';
 
-export function createConnection() {
+const connection = createConnection(); 
+
+function createConnection() {
   return mysql.createConnection({
     host: 'localhost',
     user: 'root',
@@ -10,11 +12,11 @@ export function createConnection() {
     connectTimeout: 0,
     acquireTimeout: 0,
   });
-}
+} 
 
-export function executeQuery(query, connection) {
+async function executeQuery(query, params = []) {
   return new Promise((resolve, reject) => {
-    connection.query(query, (error, results) => {
+    connection.query(query, params, (error, results) => {
       if (error) {
         reject(error);
       } else {
